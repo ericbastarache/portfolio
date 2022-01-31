@@ -1,20 +1,25 @@
 import React from "react";
 import styled from "styled-components";
+import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from "uuid";
-import useTerminalHistory from "../hooks/useTerminalHistory";
+import Window from './Window';
 import validCommands from "../validCommands";
 import { ThemeContext } from '../context/ThemeContext';
+import { TerminalContext } from '../context/TerminalContext';
+import { HistoryItem } from '../hooks/useTerminal';
 
 interface RowItem {
   id: string;
   value: string;
   showLabel: boolean;
+  workingDirectory: string;
 }
 
 const TerminalEl = styled.div`
   display: flex;
+  margin: 0 auto;
   flex-direction: row;
-  background-color: ${props => props.theme.colors.primary};
+  background-color: ${props => props.theme.colors.main.primary};
   ${(props: { maximized: boolean, currentTheme: string }) => props.currentTheme === 'light' && {
     borderRight: '1px solid #a9a9a9',
     borderBottom: '1px solid #a9a9a9',
@@ -28,7 +33,7 @@ const TerminalEl = styled.div`
           width: "100%",
           height: "100vh",
           position: "absolute",
-          zIndex: 1,
+          zIndex: 2,
           top: 0,
           left: 0,
         }
@@ -40,7 +45,7 @@ const TerminalEl = styled.div`
 `;
 
 const DefaultMessage = styled.div`
-  color: ${(props) => props.theme.colors.secondary};
+  color: ${(props) => props.theme.colors.main.secondary};
   width: 300px;
   margin: 0px auto 20px auto;
   font-size: 14px;
@@ -76,7 +81,7 @@ const TerminalInput = styled.input`
   background-color: transparent;
   outline: none;
   border: none;
-  color: ${props => props.theme.colors.secondary};
+  color: ${props => props.theme.colors.main.secondary};
   font-size: 22px;
   font-family: "Ubuntu Mono", monospace;
 `;
@@ -91,13 +96,14 @@ const TopBar = styled.div`
   content: "";
   width: 100%;
   height: 30px;
-  background-color: #a9a9a9;
+  background-color: #626266;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 `;
 
 const Title = styled.div`
   position: relative;
+  color: ${props => props.theme.colors.main.secondary};
   display: flex;
   flex-direction: column;
   text-align: left;
@@ -111,7 +117,7 @@ const Title = styled.div`
     content: "";
     width: 8px;
     height: 8px;
-    background-color: #000;
+    background-color: ${props => props.theme.colors.main.secondary};
     top: 6px;
     border-radius: 50%;
     left: -15px;
@@ -159,7 +165,7 @@ const Button = styled.button`
 const Label = styled.span`
   display: flex;
   flex-direction: row;
-  color: ${props => props.theme.colors.secondary};
+  color: ${props => props.theme.colors.main.secondary};
   margin-right: 4px;
   margin-left: 4px;
 `;
@@ -167,7 +173,7 @@ const Label = styled.span`
 const RowContainer = styled.div`
   display: flex;
   flex-direction: row;
-  color: ${props => props.theme.colors.secondary};
+  color: ${props => props.theme.colors.main.secondary};
 `;
 
 const RowValue = styled.div`
@@ -184,31 +190,20 @@ export default function Terminal() {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const screenRef = React.useRef<HTMLDivElement | null>(null);
   const [value, setValue] = React.useState("");
-  const [defaultMessage, setDefaultMessage] = React.useState<boolean>(false);
-  const [rows, setRows] = React.useState<Array<RowItem>>([]);
-  const [record, setRecord] = React.useState(0);
+  const [screen, setScreen] = React.useState({
+    history: false,
+  });
   const [maximized, setMaximized] = React.useState(false);
   const [workingDirectory, setWorkingDirectory] = React.useState("$");
-  const {
-    history,
-    setHistory,
-    getNextHistoryItem,
-    getPreviousHistoryItem
-  } = useTerminalHistory();
+  const navigate = useNavigate();
+  const { hideTerminalOnMinimize, setRows, rows, defaultMessage, setDefaultMessage, history } = React.useContext(TerminalContext);
 
   React.useEffect(() => {
     handleFocus();
-    setDefaultMessage(true);
     return () => {
       setDefaultMessage(false);
-      setHistory([]);
-      setRows([]);
     };
-  }, []);
-
-  React.useEffect(() => {
-    setRecord(history.length - 1);
-  }, [history]);
+  }, [setDefaultMessage]);
 
   React.useEffect(() => {
     if (screenRef?.current) {
@@ -231,83 +226,137 @@ export default function Terminal() {
     return `${str.split(" ").slice(0, limit).join(" ")}...`;
   };
 
-  const handleKeyDown = React.useCallback(
-    (e) => {
-      if (e.key === "Enter") {
-        setRows((prev: any) => [...prev, { id: uuidv4(), value, showLabel: true }]);
-        setHistory((prev: any) => [
-          ...prev,
-          { id: uuidv4(), value, showLabel: true }
-        ]);
-        setValue("");
-      }
-
-      if (e.key === "Enter" && value !== "") {
-        checkCommand(value);
-        setValue("");
-      }
-
-      if (e.key === "ArrowUp") {
-        setValue(getNextHistoryItem(record));
-        setRecord((prev) => prev - 1);
-      }
-
-      if (e.key === "ArrowDown") {
-        setValue(getPreviousHistoryItem(record));
-        setRecord((prev) => prev + 1);
-      }
-    },
-    [value, setHistory, getNextHistoryItem, getPreviousHistoryItem, record]
-  );
-
   const checkCommand = (command: string) => {
-    const parts = command.split(' ');
+    const parts = command.toLowerCase().split(' ');
     if (parts.length > 2) {
       setRows((prev: any) => [
         ...prev,
-        { id: uuidv4(), value: `Command accepts 1 argument ${parts.length} given`, showLabel: false }
+        { id: uuidv4(), value: `Command accepts 1 argument ${parts.length} given`, showLabel: false,  workingDirectory }
       ]);
     }
     const [commandName, commandValue] = parts;
+    /**
+     * TODO: Figure out a better way to handle history expansion
+     *
+     */
+    if (commandName.startsWith('!')) {
+      history?.getHistory()?.forEach((item: HistoryItem) => {
+        if (item.id.includes(commandName.substring(1))) {
+          setValue(item.value);
+        }
+      });
+      setScreen({ history: false });
+      return;
+    } else {
+      setValue('');
+    }
+    //TODO: Possibly involve helper library / function to handle this
     if (Object.keys(validCommands).includes(commandName)) {
       switch (commandName) {
         case "linkedin":
-          setRows((prev: any) => [
+          setRows((prev: Array<RowItem>) => [
             ...prev,
-            { id: uuidv4(), value: validCommands[commandName], showLabel: false }
+            { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
           ]);
           break;
         case "clear":
           setRows([]);
           setDefaultMessage(false);
           break;
+        case "navigate":
+          if (commandValue) {
+            setRows((prev: Array<RowItem>) => [
+              ...prev,
+              { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+            ]);
+            if (commandValue === 'home') {
+              navigate('/');
+            } else {
+              navigate(`/${commandValue}`);
+            }
+          }
+          break;
         case "settheme":
           if (commandValue) {
             switchTheme(commandValue);
-            setRows((prev: any) => [
+            setRows((prev: Array<RowItem>) => [
               ...prev,
-              { id: uuidv4(), value: validCommands[commandName], showLabel: false }
+              { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
             ]);
           }
           break;
         case "help":
-          setRows((prev: any) => [
+          setRows((prev: Array<RowItem>) => [
             ...prev,
-            { id: uuidv4(), value: validCommands[commandName], showLabel: false }
+            { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
           ]);
+          break;
+        case "cd":
+          if (commandValue) {
+            setWorkingDirectory(commandValue);
+            setRows((prev: Array<RowItem>) => [
+              ...prev,
+              { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+            ]);
+          } else if (!commandValue) {
+            setWorkingDirectory('$');
+            setRows((prev: Array<RowItem>) => [
+              ...prev,
+              { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+            ]);
+          }
+          break;
+        case "history":
+          setScreen({ history : true });
           break;
         default:
           break;
       }
     } else {
-      setRows((prev) => [
+      setRows((prev: Array<RowItem>) => [
         ...prev,
         {
           id: uuidv4(),
           value: `command not found: ${command}\n`,
-          showLabel: false
+          showLabel: false,
+           workingDirectory
         }
       ]);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      setRows((prev: any) => [...prev, { id: uuidv4(), value, showLabel: true,  workingDirectory }]);
+      history?.add(
+        { id: uuidv4(), value, showLabel: true }
+      );
+      setValue("");
+    }
+
+    if (e.key === "Enter" && value !== "") {
+      checkCommand(value);
+      // setValue("");
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const val = history.previous()?.value;
+      if (val) {
+        setValue(val);
+      } else {
+        setValue('');
+      }
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const val = history.next()?.value;
+      if (val) {
+        setValue(val);
+      } else {
+        setValue('');
+      }
     }
   };
 
@@ -323,18 +372,18 @@ export default function Terminal() {
 
   return (
     <div>
-      <TerminalEl currentTheme={theme} maximized={maximized} onClick={handleFocus}>
+      <TerminalEl currentTheme={theme} maximized={maximized}>
         <TopBar>
           <Title>Terminal - {truncate(workingDirectory, 20)}</Title>
           <ActionButtons>
             <Button variant='danger'>X</Button>
-            <Button variant='warning'>-</Button>
+            <Button onClick={hideTerminalOnMinimize} variant='warning'>-</Button>
             <Button onClick={setMaxWindow} variant='success'>
               +
             </Button>
           </ActionButtons>
         </TopBar>
-        <Screen ref={screenRef}>
+        <Screen ref={screenRef} onClick={handleFocus}>
           {defaultMessage && (
             <DefaultMessage>
               Welcome to my portfolio! <br />Some useful commands you can run: <br /><br />
@@ -345,9 +394,19 @@ export default function Terminal() {
               </ul>
             </DefaultMessage>
           )}
-          {rows.map((row: RowItem) => (
+          {screen.history && (
+              <Window>
+                {history?.getHistory()?.map((item: HistoryItem) => (
+                    <div key={item.id}>
+                      <span>{item.id}</span>
+                      <span>{item.value}</span>
+                    </div>
+                ))}
+              </Window>
+          )}
+          {rows.map((row: any) => (
             <RowContainer key={row.id}>
-              <Label>{row.showLabel ? "$" : ""}</Label>
+              <Label>{row.showLabel ? row.workingDirectory : ""}</Label>
               <RowValue
                 onClick={handleLinkClick(row.value)}
                 isLink={row.value.includes("https")}
@@ -357,7 +416,7 @@ export default function Terminal() {
             </RowContainer>
           ))}
           <RowContainer>
-            <Label>$ </Label>
+            <Label>{workingDirectory} </Label>
             <TerminalInput
               value={value}
               ref={inputRef}

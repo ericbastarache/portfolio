@@ -1,15 +1,22 @@
 import React from 'react';
+import styled from 'styled-components';
 import ReactDOM from 'react-dom';
-import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ThemeContextProvider } from './context/ThemeContext';
+import { TerminalContextProvider } from './context/TerminalContext';
 import theme from './theme';
+
+const Main = styled(App)`
+  height: 100vh;
+`;
 
 ReactDOM.render(
   <React.StrictMode>
     <ThemeContextProvider>
-      <App />
+      <TerminalContextProvider>
+        <App />
+      </TerminalContextProvider>
     </ThemeContextProvider>
   </React.StrictMode>,
   document.getElementById('root')

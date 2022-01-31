@@ -1,16 +1,24 @@
 type ThemeObject = {
   [key: string]: {
     colors: {
-      primary: string;
-      secondary: string;
+      main: {
+        background: string;
+        primary: string;
+        secondary: string;
+      };
+      accents: {
+        red: string;
+        lightBlue: string;
+        blue: string;
+      };
       danger: string;
       success: string;
       warning: string;
     },
     font: {
-      size: 16,
-      weight: 'normal',
-      family: 'sans-serif'
+      size: number;
+      weight: string;
+      family: string;
     }
   }
 }
@@ -18,28 +26,44 @@ type ThemeObject = {
 export const theme: ThemeObject = {
   light: {
     colors: {
-      primary: '#fff',
-      secondary: '#000',
-      danger: '#e2443a',
-      success: '#22aa27',
-      warning: '#e1a22b'
+      main: {
+        background: '#fff',
+        primary: '#fafaff',
+        secondary: '#32292f',
+      },
+      accents: {
+        red: '#b56576',
+        lightBlue: '#4f86c8',
+        blue: '#1768ac'
+      },
+      danger: '#FC5B57',
+      success: '#57C038',
+      warning: '#E5BF3C'
     },
     font: {
-      size: 16,
+      size: 20,
       weight: 'normal',
       family: 'sans-serif'
     }
   },
   dark: {
     colors: {
-      primary: '#000',
-      secondary: '#fff',
-      danger: '#e2443a',
-      success: '#22aa27',
-      warning: '#e1a22b'
+      main: {
+        background: '#161111',
+        primary: '#32292f',
+        secondary: '#fafaff',
+      },
+      accents: {
+        red: '#b56576',
+        lightBlue: '#4f86c8',
+        blue: '#1768ac'
+      },
+      danger: '#FC5B57',
+      success: '#57C038',
+      warning: '#E5BF3C'
     },
     font: {
-      size: 16,
+      size: 20,
       weight: 'normal',
       family: 'sans-serif'
     }

@@ -1,9 +1,15 @@
 import React from 'react';
+// import { Route, BrowserRouter as Router } from 'react-router-dom';
+import { Routes, Route, BrowserRouter as Router } from 'react-router-dom';
 import { ThemeProvider, createGlobalStyle } from 'styled-components';
 import logo from './logo.svg';
 import Terminal from './components/Terminal';
-import { ThemeContextProvider, ThemeContext } from './context/ThemeContext';
+import Header from './components/Header';
+import { ThemeContext } from './context/ThemeContext';
+import { TerminalContext } from './context/TerminalContext';
 import Home from './pages/Home';
+import Projects from './pages/Projects';
+import Drawer from './components/Drawer';
 import { theme as themes } from './theme';
 
 const GlobalStyle = createGlobalStyle`
@@ -13,20 +19,25 @@ const GlobalStyle = createGlobalStyle`
     transition: all 0.5s;
   }
   #root {
-    height: 100%;
+    height: 100vh;
+    overflow-y: hidden;
   }
 `;
 
 function App() {
   const { theme } = React.useContext(ThemeContext);
+  const { setDefaultMessage } = React.useContext(TerminalContext);
   return (
     <ThemeProvider theme={themes[theme]}>
-      <div style={{ height: '100%' }}>
-        <GlobalStyle />
-        <Home>
-          <Terminal />
-        </Home>
-      </div>
+      <GlobalStyle />
+      <Router> 
+        <Header />
+        <Routes>
+          <Route path='/' element={<Home />} />
+          <Route path='/projects' element={<Projects />} />
+        </Routes>
+        <Drawer />
+      </Router>
     </ThemeProvider>
   );
 }
