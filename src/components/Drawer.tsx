@@ -7,13 +7,11 @@ import { TerminalContext } from '../context/TerminalContext';
 import useTerminal from '../hooks/useTerminal';
 
 const DrawerContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  bottom: 10px;
-  right: 10px;
+  overflow: auto;
+  bottom: 0;
+  right: 0;
   z-index: 1;
-  position: absolute;
+  position: fixed;
   width: 50px;
   height: 50px;
 `;

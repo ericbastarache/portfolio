@@ -252,11 +252,12 @@ export default function Terminal() {
     }
     //TODO: Possibly involve helper library / function to handle this
     if (Object.keys(validCommands).includes(commandName)) {
+      const commonObj = { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory };
       switch (commandName) {
         case "linkedin":
           setRows((prev: Array<RowItem>) => [
             ...prev,
-            { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+            commonObj,
           ]);
           break;
         case "clear":
@@ -267,7 +268,7 @@ export default function Terminal() {
           if (commandValue) {
             setRows((prev: Array<RowItem>) => [
               ...prev,
-              { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+              commonObj,
             ]);
             if (commandValue === 'home') {
               navigate('/');
@@ -281,14 +282,14 @@ export default function Terminal() {
             switchTheme(commandValue);
             setRows((prev: Array<RowItem>) => [
               ...prev,
-              { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+              commonObj,
             ]);
           }
           break;
         case "help":
           setRows((prev: Array<RowItem>) => [
             ...prev,
-            { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+            commonObj,
           ]);
           break;
         case "cd":
@@ -296,18 +297,29 @@ export default function Terminal() {
             setWorkingDirectory(commandValue);
             setRows((prev: Array<RowItem>) => [
               ...prev,
-              { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+              commonObj,
             ]);
           } else if (!commandValue) {
             setWorkingDirectory('$');
             setRows((prev: Array<RowItem>) => [
               ...prev,
-              { id: uuidv4(), value: validCommands[commandName], showLabel: false,  workingDirectory }
+              commonObj,
             ]);
           }
           break;
         case "history":
           setScreen({ history : true });
+          break;
+        case "download":
+          if (commandValue) {
+            setRows((prev: Array<RowItem>) => [
+              ...prev,
+              commonObj
+            ]);
+            if (commandValue === 'snippet-saver') {
+              // @TODO: Add download logic
+            }
+          }
           break;
         default:
           break;
@@ -336,7 +348,6 @@ export default function Terminal() {
 
     if (e.key === "Enter" && value !== "") {
       checkCommand(value);
-      // setValue("");
     }
 
     if (e.key === "ArrowUp") {

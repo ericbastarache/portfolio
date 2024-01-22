@@ -18,9 +18,9 @@ const GlobalStyle = createGlobalStyle`
     padding: 0;
     transition: all 0.5s;
   }
-  #root {
+  html, body, #root {
     height: 100vh;
-    overflow-y: hidden;
+    overflow-y: visible;
   }
 `;
 
